@@ -2,6 +2,7 @@ const express = require('express');
 const { z } = require('zod');
 const validar = require('../middlewares/validar');
 const notasService = require('../services/notas.service');
+const deepseek = require('../services/deepseek.service');
 
 const router = express.Router();
 
@@ -96,6 +97,20 @@ const notaSchema = z.object({
  *         error:
  *           type: string
  *           example: Nota no encontrada
+ *     ResumenNota:
+ *       type: object
+ *       required:
+ *         - notaId
+ *         - resumen
+ *       properties:
+ *         notaId:
+ *           type: integer
+ *           description: Identificador numérico de la nota resumida.
+ *           example: 1
+ *         resumen:
+ *           type: string
+ *           description: Resumen en 3 viñetas breves generado por el modelo de IA.
+ *           example: "- Primer punto clave\n- Segundo punto clave\n- Tercer punto clave"
  */
 
 /**
@@ -238,6 +253,58 @@ router.post('/', validar(notaSchema), (req, res) => {
 router.delete('/:id', (req, res) => {
   notasService.eliminar(req.params.id);
   return res.status(204).end();
+});
+
+/**
+ * @swagger
+ * /api/notas/{id}/resumen:
+ *   post:
+ *     summary: Resumir nota con IA
+ *     description: Genera un resumen del contenido de una nota en 3 viñetas breves utilizando DeepSeek.
+ *     tags:
+ *       - Notas
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: Identificador numérico de la nota.
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *         example: 1
+ *     responses:
+ *       200:
+ *         description: Resumen generado exitosamente.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ResumenNota'
+ *             example:
+ *               notaId: 1
+ *               resumen: "- Primer punto clave\n- Segundo punto clave\n- Tercer punto clave"
+ *       404:
+ *         description: No existe una nota con ese ID.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorNotaNoEncontrada'
+ *             example:
+ *               error: Nota no encontrada
+ */
+router.post('/:id/resumen', async (req, res, next) => {
+  try {
+    const nota = notasService.buscar(req.params.id);
+    const resultado = await deepseek.preguntar(
+      nota.contenido,
+      'Resume el texto en 3 viñetas breves, en español.'
+    );
+    return res.status(200).json({
+      notaId: nota.id,
+      resumen: resultado.respuesta,
+    });
+  } catch (error) {
+    return next(error);
+  }
 });
 
 module.exports = router;
