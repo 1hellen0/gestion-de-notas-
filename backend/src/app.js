@@ -2,6 +2,7 @@ const express = require('express');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./config/swagger');
 const notasRoutes = require('./routes/notas.routes');
+const iaRoutes = require('./routes/ia.routes');
 const errorHandler = require('./middlewares/errorHandler');
 
 const app = express();
@@ -25,6 +26,7 @@ app.get('/api/health', (req, res) => {
 });
 
 app.use('/api/notas', notasRoutes);
+app.use('/api/ia', iaRoutes);
 
 app.use(errorHandler);
 
